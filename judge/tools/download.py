@@ -1,19 +1,19 @@
-import os
-from typing import Generator, List, Optional, Iterator
-import pkg_resources
-from pathlib import Path
 import contextlib
 import http.cookiejar
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 from functools import partial
+from pathlib import Path
+from typing import Generator, Iterator, List, Optional
 
-from typing_extensions import Literal
-import requests
-from requests.exceptions import InvalidURL
 import onlinejudge.dispatch as dispatch
-from onlinejudge.service.yukicoder import YukicoderProblem
 import onlinejudge.utils as utils
+import pkg_resources
+import requests
+from onlinejudge.service.yukicoder import YukicoderProblem
 from onlinejudge.type import Problem, SampleParseError, TestCase
+from requests.exceptions import InvalidURL
+from typing_extensions import Literal
 
 from judge.tools.format import embedd_percentformat
 
@@ -44,9 +44,6 @@ def create_UA_session(
             yield session
     except http.cookiejar.LoadError:
         raise
-
-
-from dataclasses import dataclass, field, asdict
 
 
 @dataclass
