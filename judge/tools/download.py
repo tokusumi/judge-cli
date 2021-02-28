@@ -16,6 +16,7 @@ from requests.exceptions import InvalidURL
 from typing_extensions import Literal
 
 from judge.tools.format import embedd_percentformat
+from judge.schema import Sample
 
 
 def url_from_contest(contest: str, problem: str) -> str:
@@ -76,13 +77,6 @@ class DownloadArgs:
 class SaveArgs:
     format: str
     directory: Path
-
-
-@dataclass(frozen=True)
-class Sample:
-    ext: Literal["in", "out"]
-    path: Path
-    data: bytes
 
 
 def get_extensions() -> Generator[Literal["in", "out"], None, None]:
