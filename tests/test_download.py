@@ -3,6 +3,7 @@ import shutil
 import tempfile
 
 import typer
+import pytest
 from typer.testing import CliRunner
 
 from judge.download import main
@@ -13,6 +14,7 @@ app.command()(main)
 runner = CliRunner()
 
 
+@pytest.mark.download
 def test_download():
     result = runner.invoke(app, ["abc051", "c"])
     assert result.exit_code == 0, result.stdout
@@ -27,6 +29,7 @@ def test_download():
         assert os.listdir(os.path.join(tempdir, "abc051_b"))
 
 
+@pytest.mark.download
 def test_download_failed():
     with tempfile.TemporaryDirectory() as tempdir:
         result = runner.invoke(app, ["a-b-c051", "b", tempdir])
