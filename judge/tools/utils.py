@@ -1,13 +1,13 @@
-from typing import Optional, List, BinaryIO, Callable
-import tempfile
 import contextlib
-import shlex
-import time
 import os
+import shlex
+import signal
 import subprocess
 import sys
+import tempfile
+import time
 from dataclasses import dataclass
-import signal
+from typing import BinaryIO, Callable, List, Optional
 
 from judge.schema import TimerMode
 
@@ -18,12 +18,12 @@ class ExecArgs:
     stdin: Optional[BinaryIO]
     input: Optional[bytes]
     preexec_fn: Optional[Callable[[], None]] = None
-    timeout: Optional[float] = None
+    timeout: Optional[float] = None  # sec
 
 
 @dataclass
 class History:
-    proc: subprocess.Popen
+    proc: subprocess.Popen  # type: ignore
     answer: Optional[bytes] = None
     elapsed: float = -1  # ms
     memory: Optional[float] = None  # MB
@@ -36,7 +36,7 @@ def _exec(args: ExecArgs) -> History:
             args.command,
             stdin=args.stdin,
             stdout=subprocess.PIPE,
-            stderr=sys.stderr,
+            stderr=subprocess.STDOUT,
             preexec_fn=args.preexec_fn,
         )  # pylint: disable=subprocess-popen-preexec-fn
     except FileNotFoundError:
@@ -63,7 +63,7 @@ def _exec(args: ExecArgs) -> History:
 
 def _exec_no_time(args: ExecArgs) -> History:
     # TODO: we should use contextlib.nullcontext() if possible
-    with contextlib.ExitStack() as fh:
+    with contextlib.ExitStack():
         history = _exec(args)
     return history
 
@@ -84,9 +84,8 @@ def _exec_with_gnu_time(args: ExecArgs) -> History:
         #     command = command_str.encode().decode()  # type: ignore
 
         # We need kill processes called from the "time" command using process groups. Without this, orphans spawn. see https://github.com/kmyk/online-judge-tools/issues/640
-        preexec_fn = None
         if os.name == "posix":
-            preexec_fn = os.setsid
+            args.preexec_fn = os.setsid
 
         # run command
         history = _exec(args)
@@ -117,7 +116,7 @@ def exec_command(
         command=shlex.split(command_str),
         stdin=stdin,
         input=input,
-        timeout=timeout,
+        timeout=timeout / 1000 if timeout else -1,
     )
     if not gnu_time:
         history = _exec_no_time(args)

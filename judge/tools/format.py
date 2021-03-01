@@ -1,12 +1,9 @@
 import os
 import re
-import sys
-import collections
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, List, Optional, Dict
+from typing import Dict, Generator, List
 
-from onlinejudge.type import TestCase
 from judge.schema import TestCasePath
 
 

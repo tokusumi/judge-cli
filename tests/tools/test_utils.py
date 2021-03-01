@@ -1,6 +1,8 @@
 import tempfile
 from pathlib import Path
+
 import pytest
+
 from judge.tools.utils import exec_command
 
 
@@ -35,11 +37,7 @@ def test_exec_command():
         # print(history)
 
         with in_dir.open("rb") as f:
-            history = exec_command(
-                comm,
-                stdin=f,
-                gnu_time="gnu-time",
-            )
+            history = exec_command(comm, stdin=f, gnu_time="gnu-time", timeout=1e9)
         assert history.elapsed
         assert history.memory
         print(history)

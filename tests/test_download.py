@@ -2,8 +2,8 @@ import os
 import shutil
 import tempfile
 
-import typer
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from judge.download import main

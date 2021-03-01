@@ -15,8 +15,8 @@ from onlinejudge.type import Problem, SampleParseError, TestCase
 from requests.exceptions import InvalidURL
 from typing_extensions import Literal
 
-from judge.tools.format import embedd_percentformat
 from judge.schema import Sample
+from judge.tools.format import embedd_percentformat
 
 
 def url_from_contest(contest: str, problem: str) -> str:
