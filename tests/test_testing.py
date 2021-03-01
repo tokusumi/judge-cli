@@ -31,7 +31,9 @@ def test_testing():
 
         # success to use Python3 and PyPy3
         result = runner.invoke(
-            app, [solution_file, "abc051", "a", tempdir, "--py", "--pypy"]
+            # app, [solution_file, "abc051", "a", tempdir, "--py", "--pypy"]
+            app,
+            [solution_file, "abc051", "a", tempdir, "--py"],
         )
         assert result.exit_code == 0, result.stdout
 
