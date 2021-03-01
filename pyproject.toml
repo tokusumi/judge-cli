@@ -11,6 +11,8 @@ readme = "README.md"
 python = "^3.7"
 typer = "^0.3.2"
 online-judge-api-client = "^10.8.0"
+pydantic = "^1.8"
+toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.800"
