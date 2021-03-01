@@ -1,6 +1,6 @@
 # Online Judgement CLI
 [![Tests](https://github.com/tokusumi/judge-cli/actions/workflows/test.yml/badge.svg)](https://github.com/tokusumi/judge-cli/actions/workflows/test.yml)
-
+[![codecov](https://codecov.io/gh/tokusumi/judge-cli/branch/main/graph/badge.svg?token=ZK2SDRZNAN)](https://codecov.io/gh/tokusumi/judge-cli)
 
 Forked from [Online-Judge-Tools/oj](https://github.com/online-judge-tools/oj)
 
