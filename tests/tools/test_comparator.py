@@ -1,6 +1,6 @@
-from judge.tools import comparator
-
 import pytest
+
+from judge.tools import comparator
 
 
 @pytest.mark.offline
@@ -94,3 +94,72 @@ def test_crlf_insensitive():
     )
     assert not comp(actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.1 2.1\r\n")
     assert comp(actual=b"1.0\r\n2.0\r\n", expected=b"1.1\r\n2.1\r\n")
+
+
+@pytest.mark.offline
+def test_exact_match():
+    comp = comparator.exact_match()
+    assert not comp(actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.1 2.1\r\n")
+    assert comp(actual=b"1.0\r\n2.0\r\n", expected=b"1.0\r\n2.0\r\n")
+
+    # not exact match but ignore CRLF, spaces, new line.
+    comp = comparator.exact_match(tolerant=1e-1)
+    assert not comp(
+        actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.4 2.4\r\n3.4 4.4\r\n"
+    )
+    assert comp(actual=b"1.0  1.0\n2.0\n", expected=b"1.1 1.1\r\n2.1")
+
+
+@pytest.mark.offline
+def test_crlf_insensitive_exact_match():
+    # Can ignore difference between \n and \r\n
+    comp = comparator.crlf_insensitive_exact_match()
+    assert not comp(
+        actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.0 2.0\r\n1.1 2.1\r\n"
+    )
+    assert comp(actual=b"1.0\n2.0\n", expected=b"1.0\r\n2.0\r\n")
+
+    # same as `comparator.exact_match(tolerance=<float>)`
+    comp = comparator.crlf_insensitive_exact_match(tolerant=1e-1)
+    assert not comp(
+        actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.4 2.4\r\n3.4 4.4\r\n"
+    )
+    assert comp(actual=b"1.0  1.0\n2.0\n", expected=b"1.1 1.1\r\n2.1")
+
+
+@pytest.mark.offline
+def test_ignore_spaces():
+    # Can ignore extra spaces and difference between \n and \r\n
+    comp = comparator.ignore_spaces()
+    assert not comp(actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.02.0\r\n1.1 2.1\r\n")
+    assert comp(actual=b"1.0 1.0\n2.0\n", expected=b"1.0   1.0\r\n2.0\r\n")
+
+    # same as `comparator.exact_match(tolerance=<float>)`
+    comp = comparator.ignore_spaces(tolerant=1e-1)
+    assert not comp(
+        actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.4 2.4\r\n3.4 4.4\r\n"
+    )
+    assert comp(actual=b"1.0  1.0\n2.0\n", expected=b"1.1 1.1\r\n2.1")
+
+
+@pytest.mark.offline
+def test_ignore_spaces_and_newlines():
+    # Can ignore extra spaces, extra newlines and difference between \n and \r\n
+    comp = comparator.ignore_spaces_and_newlines()
+    assert not comp(actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.02.0\r\n1.1 2.1")
+    assert comp(actual=b"1.0 1.0\n2.0\n", expected=b"1.0   1.0\r\n2.0")
+
+    # same as `comparator.exact_match(tolerance=<float>)`
+    comp = comparator.ignore_spaces_and_newlines(tolerant=1e-1)
+    assert not comp(
+        actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.4 2.4\r\n3.4 4.4\r\n"
+    )
+    assert comp(actual=b"1.0  1.0\n2.0\n", expected=b"1.1 1.1\r\n2.1")
+
+
+@pytest.mark.offline
+def test_non_strict():
+    # same as `comparator.ignore_spaces_and_newlines(tolerance=None)`
+    comp = comparator.non_strict()
+    assert not comp(actual=b"1.0 2.0\r\n3.0 4.0\r\n", expected=b"1.02.0\r\n1.1 2.1")
+    assert comp(actual=b"1.0 1.0\n2.0\n", expected=b"1.0   1.0\r\n2.0")
