@@ -15,6 +15,7 @@ from onlinejudge.type import Problem, SampleParseError, TestCase
 from requests.exceptions import InvalidURL
 from typing_extensions import Literal
 
+from judge.schema import Sample
 from judge.tools.format import embedd_percentformat
 
 
@@ -76,13 +77,6 @@ class DownloadArgs:
 class SaveArgs:
     format: str
     directory: Path
-
-
-@dataclass(frozen=True)
-class Sample:
-    ext: Literal["in", "out"]
-    path: Path
-    data: bytes
 
 
 def get_extensions() -> Generator[Literal["in", "out"], None, None]:
