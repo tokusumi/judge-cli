@@ -1,7 +1,9 @@
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Optional
-from enum import Enum
-from dataclasses import dataclass
+
+import typer
 from typing_extensions import Literal
 
 
@@ -31,12 +33,52 @@ class TimerMode(Enum):
     GNU_TIME = "gnu-time"
 
 
+class BaseJudgeStatus:
+    name = ""
+    color = ""
+
+    @classmethod
+    def style(self) -> str:
+        """define output of typer.style"""
+        return typer.style(self.__str__(), fg=self.color)
+
+    @classmethod
+    def __str__(self) -> str:
+        """define standard string output"""
+        return self.name
+
+
+class AC_(BaseJudgeStatus):
+    name = "AC"
+    color = typer.colors.GREEN
+
+
+class WA_(BaseJudgeStatus):
+    name = "WA"
+    color = typer.colors.RED
+
+
+class RE_(BaseJudgeStatus):
+    name = "RE"
+    color = typer.colors.RED
+
+
+class MLE_(BaseJudgeStatus):
+    name = "MLE"
+    color = typer.colors.YELLOW
+
+
+class TLE_(BaseJudgeStatus):
+    name = "TLE"
+    color = typer.colors.YELLOW
+
+
 class JudgeStatus(Enum):
-    AC = "AC"
-    WA = "WA"
-    RE = "RE"
-    TLE = "TLE"
-    MLE = "MLE"
+    AC = AC_
+    WA = WA_
+    RE = RE_
+    TLE = TLE_
+    MLE = MLE_
 
 
 @dataclass
