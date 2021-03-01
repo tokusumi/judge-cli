@@ -1,24 +1,18 @@
 import concurrent.futures
 import contextlib
-from dataclasses import dataclass
 import os
 import subprocess
 import tempfile
 import threading
-import traceback
-from typing import *
-from typing import List
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Generator, List, Optional
 
-from judge.tools.format import (
-    glob_with_format,
-    drop_backup_or_hidden_files,
-    construct_relationship_of_files,
-)
-from judge.tools import utils
-from judge.tools import comparator
-from judge.schema import History, TestCasePath, JudgeStatus, CompareMode, TimerMode
-
+from judge.schema import (CompareMode, History, JudgeStatus, TestCasePath,
+                          TimerMode)
+from judge.tools import comparator, utils
+from judge.tools.format import (construct_relationship_of_files,
+                                drop_backup_or_hidden_files, glob_with_format)
 
 MEMORY_WARNING = 500  # megabyte
 MEMORY_PRINT = 100  # megabyte
@@ -88,7 +82,6 @@ def run_checking_output(
     else:
         # only if --judge option
         expected = b""
-        # logger.warning("expected output is not found")
     return match_fn(answer, expected)
 
 
@@ -115,20 +108,12 @@ def judge(
 
 @dataclass
 class TestingArgs:
-    test: List[Path]
-    directory: Path
-    format: str
+    testcases: List[TestCasePath]
     command: str
     gnu_time: Optional[str]
     mle: Optional[float]
     tle: Optional[float]
-    compare_mode: Literal[
-        "exact-match",
-        "crlf-insensitive-exact-match",
-        "ignore-spaces",
-        "ignore-spaces-and-newlines",
-    ]
-    ignore_backup: bool = True
+    compare_mode: CompareMode
     jobs: Optional[int] = None
     error: Optional[float] = None
     silent: bool = True
@@ -209,14 +194,25 @@ def check_gnu_time(gnu_time: str) -> bool:
     return False
 
 
-def test(args: TestingArgs) -> List[History]:
+@dataclass
+class GetTestCasesArgs:
+    test: List[Path]
+    directory: Path
+    format: str
+    ignore_backup: bool = True
+
+
+def get_testcases(args: GetTestCasesArgs) -> List[TestCasePath]:
     # list tests
     if not args.test:
         args.test = glob_with_format(args.directory, args.format)  # by default
     if args.ignore_backup:
         args.test = drop_backup_or_hidden_files(args.test)
     tests = construct_relationship_of_files(args.test)
+    return tests
 
+
+def test(args: TestingArgs) -> Generator[History, None, None]:
     # check wheather GNU time is available
     if args.gnu_time and not check_gnu_time(args.gnu_time):
         # print("GNU time is not available: %s", args.gnu_time)
@@ -226,26 +222,23 @@ def test(args: TestingArgs) -> List[History]:
 
     # comparater
     comparater = build_comparater(
-        compare_mode=CompareMode(args.compare_mode),
+        compare_mode=args.compare_mode,
         error=args.error,
         judge_command=args.judge,
         silent=args.silent,
     )
 
     # run tests
-    history: List[History] = []
     if args.jobs is None:
-        for testcase in sorted(tests, key=lambda f: f.name):
+        for testcase in sorted(args.testcases, key=lambda f: f.name):
             if not testcase.in_path:
                 continue
-            history.append(
-                test_single_case(
-                    testcase.name,
-                    testcase.in_path,
-                    testcase.out_path,
-                    comparater,
-                    args=args,
-                )
+            yield test_single_case(
+                testcase.name,
+                testcase.in_path,
+                testcase.out_path,
+                comparater,
+                args=args,
             )
     else:
         if os.name == "nt":
@@ -253,8 +246,8 @@ def test(args: TestingArgs) -> List[History]:
             pass
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
             lock = threading.Lock()
-            futures: List[concurrent.futures.Future] = []
-            for testcase in sorted(tests, key=lambda f: f.name):
+            futures: List[concurrent.futures.Future[History]] = []
+            for testcase in sorted(args.testcases, key=lambda f: f.name):
                 if not testcase.in_path:
                     continue
                 futures += [
@@ -269,5 +262,4 @@ def test(args: TestingArgs) -> List[History]:
                     )
                 ]
             for future in futures:
-                history.append(future.result())
-    return history
+                yield future.result()

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from judge.schema import CompareMode
 from judge.tools import testing
 
 
@@ -24,16 +25,21 @@ def test_judge_status(job):
 
         _format = "sample%s.%e"
 
-        # answer corrected
-        args = testing.TestingArgs(
+        args = testing.GetTestCasesArgs(
             test=None,
             directory=tempdir,
             format=_format,
+        )
+        testcases = testing.get_testcases(args)
+
+        # answer corrected
+        args = testing.TestingArgs(
+            testcases=testcases,
             command="python3 -c 'print(input()[0])'",
             gnu_time="gnu-time",
             mle=1e5,
-            tle=None,
-            compare_mode="exact-match",
+            tle=1e6,
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
@@ -42,14 +48,12 @@ def test_judge_status(job):
 
         # wrong answer
         args = testing.TestingArgs(
-            test=None,
-            directory=tempdir,
-            format=_format,
+            testcases=testcases,
             command="python3 -c 'print(input())'",
             gnu_time="gnu-time",
             mle=1e5,
-            tle=None,
-            compare_mode="exact-match",
+            tle=1e6,
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
@@ -58,14 +62,12 @@ def test_judge_status(job):
 
         # Syntax error
         args = testing.TestingArgs(
-            test=None,
-            directory=tempdir,
-            format=_format,
+            testcases=testcases,
             command="python3 -c 'print(input()'",
             gnu_time="gnu-time",
             mle=1e5,
-            tle=None,
-            compare_mode="exact-match",
+            tle=1e6,
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
@@ -74,14 +76,12 @@ def test_judge_status(job):
 
         # time limit error
         args = testing.TestingArgs(
-            test=None,
-            directory=tempdir,
-            format=_format,
+            testcases=testcases,
             command="python3 -c 'print(input())'",
             gnu_time="gnu-time",
             mle=1e5,
             tle=1e-9,
-            compare_mode="exact-match",
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
@@ -90,14 +90,12 @@ def test_judge_status(job):
 
         # memory limit error
         args = testing.TestingArgs(
-            test=None,
-            directory=tempdir,
-            format=_format,
+            testcases=testcases,
             command="python3 -c 'print(input()[0])'",
             gnu_time="gnu-time",
             mle=1e-9,
-            tle=None,
-            compare_mode="exact-match",
+            tle=1e6,
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
@@ -112,19 +110,92 @@ def test_raise(job):
         tempdir = Path(_tempdir) / "abc000_a"
         tempdir.mkdir(parents=True, exist_ok=True)
 
-        _format = "sample%s.%e"
-
         # answer corrected
         args = testing.TestingArgs(
-            test=None,
-            directory=tempdir,
-            format=_format,
+            testcases=[],
             command="python3 -c 'print(input()[0])'",
             gnu_time="gnu-time",
             mle=None,
             tle=None,
-            compare_mode="exact-match",
+            compare_mode=CompareMode("exact-match"),
             jobs=job,
         )
         histories = testing.test(args)
-        assert len(histories) == 0
+        _histories = [1 for _ in histories]
+        assert not _histories
+
+
+@pytest.mark.offline
+@pytest.mark.parametrize("job", [None, 2])
+def test_mode_only_exact(job):
+    with tempfile.TemporaryDirectory() as _tempdir:
+        _tempdir = Path(_tempdir)
+        tempdir = _tempdir / "abc000_a"
+        tempdir.mkdir(parents=True, exist_ok=True)
+
+        with (tempdir / "sample-1.in").open("wb") as f:
+            f.write(b"1 1 1\n")
+        with (tempdir / "sample-1.out").open("wb") as f:
+            f.write(b"1 1\n2 2\n\n")
+
+        _format = "sample%s.%e"
+
+        args = testing.GetTestCasesArgs(
+            test=None,
+            directory=tempdir,
+            format=_format,
+        )
+        testcases = testing.get_testcases(args)
+
+        def helper(answer, mode, status):
+            file = _tempdir / "temp.txt"
+            with file.open("wb") as f:
+                f.write(answer)
+
+            args = testing.TestingArgs(
+                testcases=testcases,
+                command=f"python3 {file}",
+                gnu_time="gnu-time",
+                mle=1e5,
+                tle=1e6,
+                compare_mode=mode,
+                jobs=job,
+            )
+            histories = testing.test(args)
+            for history in histories:
+                assert history.status == status
+
+        # ignore CRLF
+        helper(
+            br'print("1 1\r\n2 2\r\n")',
+            CompareMode.CRLF_INSENSITIVE_EXACT_MATCH,
+            testing.JudgeStatus.AC,
+        )
+
+        # not ignore extra spaces
+        helper(
+            br'print("1     1\n2 2\n")',
+            CompareMode.CRLF_INSENSITIVE_EXACT_MATCH,
+            testing.JudgeStatus.WA,
+        )
+
+        # ignore extra spaces
+        helper(
+            br'print("1     1\r\n2 2\r\n")',
+            CompareMode.IGNORE_SPACES,
+            testing.JudgeStatus.AC,
+        )
+
+        # cannot ignore extra newlines
+        helper(
+            br'print("1     1\r\n\r\n2 2")',
+            CompareMode.IGNORE_SPACES,
+            testing.JudgeStatus.WA,
+        )
+
+        # ignore extra newlines
+        helper(
+            br'print("1     1\r\n\r\n2 2")',
+            CompareMode.IGNORE_SPACES_AND_NEWLINES,
+            testing.JudgeStatus.AC,
+        )
