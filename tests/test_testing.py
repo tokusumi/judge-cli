@@ -59,9 +59,9 @@ def test_testing_failed():
         # invalid verbose
         os.makedirs(os.path.join(tempdir, "abc051_g"))
         result = runner.invoke(
-            app, [solution_file, "abc051", "a", tempdir, "--verbose", "-1"]
+            app, [solution_file, "abc051", "a", tempdir, "--verbose", "not-supported"]
         )
-        assert result.exit_code == 1, result.stdout
+        assert result.exit_code == 2, result.stdout
 
 
 @pytest.mark.download

@@ -17,6 +17,14 @@ class Execution(str, Enum):
     cython = "cy"
 
 
+class VerboseStr(str, Enum):
+    error = "error"
+    error_detail = "error_detail"
+    all = "all"
+    detail = "detail"
+    dd = "dd"
+
+
 def main(
     file: str,
     contest: str,
@@ -30,7 +38,7 @@ def main(
     mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help=""),
     tolerance: Optional[float] = typer.Option(None, "--tol", help=""),
     jobs: Optional[int] = typer.Option(None, "--jobs", help=""),
-    verbose: int = typer.Option(10, "--verbose", help=""),
+    verbose: VerboseStr = typer.Option(VerboseStr.error, "-v", "--verbose", help=""),
 ) -> None:
 
     """
@@ -98,11 +106,8 @@ def main(
         )
     )
 
-    _verbose = None
-    for v in Verbose:
-        if verbose == v.value:
-            _verbose = v
-    if not _verbose:
+    _verbose: Optional[Verbose] = Verbose.__members__.get(verbose.name)
+    if _verbose is None:
         typer.secho("invalid verbose", fg=typer.colors.RED)
         raise typer.Abort()
 
@@ -123,6 +128,7 @@ def main(
             )
         )
         _histories = []
+
         for history in histories:
             render_history(history, _verbose)
             _histories.append(history)
