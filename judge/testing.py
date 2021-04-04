@@ -1,14 +1,14 @@
 import subprocess
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import typer
 
 from judge.rendering.history import Verbose, render_history
 from judge.rendering.summary import render_summary
 from judge.schema import CompareMode
-from judge.tools import testing
+from judge.tools import testing, format
 
 
 class Execution(str, Enum):
@@ -30,6 +30,9 @@ def main(
     contest: str,
     problem: str,
     directory: Path = typer.Argument("tests", help="a directory path for test cases"),
+    case: Optional[str] = typer.Option(
+        None, "--case", help="set target test case manually"
+    ),
     py: bool = typer.Option(False, "--py", help="set if you execute Python3"),
     pypy: bool = typer.Option(False, "--pypy", help="set if you execute PyPy3"),
     cython: bool = typer.Option(False, "--cython", help="set if you execute Cython3"),
@@ -97,9 +100,20 @@ def main(
     if not execs:
         execs.append(f"python3 {file}")
 
+    if case is None:
+        tests: List[Path] = []
+    else:
+        # collect test cases path manually
+        tests = format.glob_with_samplename(test_dir, case)
+        if not tests:
+            typer.secho(
+                f"Not found test case: {case} in {test_dir}", fg=typer.colors.RED
+            )
+            raise typer.Abort()
+
     testcases = testing.get_testcases(
         testing.GetTestCasesArgs(
-            test=[],
+            test=tests,
             directory=test_dir,
             format="sample%s.%e",
             ignore_backup=True,

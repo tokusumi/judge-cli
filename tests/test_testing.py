@@ -56,6 +56,12 @@ def test_testing_failed():
         result = runner.invoke(app, [solution_file, "abc051", "g", tempdir])
         assert result.exit_code == 1, result.stdout
 
+        # invalid test case
+        result = runner.invoke(
+            app, [solution_file, "abc051", "a", tempdir, "--case", "sample100"]
+        )
+        assert result.exit_code == 1, result.stdout
+
         # invalid verbose
         os.makedirs(os.path.join(tempdir, "abc051_g"))
         result = runner.invoke(
