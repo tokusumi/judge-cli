@@ -40,6 +40,11 @@ def glob_with_format(directory: Path, format: str) -> List[Path]:
     return paths
 
 
+def glob_with_samplename(directory: Path, name: str) -> List[Path]:
+    paths = list(directory.glob(f"{name}.*"))
+    return paths
+
+
 def is_backup_or_hidden_file(path: Path) -> bool:
     basename = path.name
     return (
