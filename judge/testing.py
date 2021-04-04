@@ -60,7 +60,7 @@ def main(
             raise typer.Abort()
 
         err = subprocess.run(
-            ["judge", "download", contest, problem, test_dir]
+            ["judge", "download", contest, problem, directory]
         ).returncode
         if err:
             raise typer.Abort()
@@ -97,6 +97,9 @@ def main(
             ignore_backup=True,
         )
     )
+    if not testcases:
+        typer.secho("Not found test cases", fg=typer.colors.RED)
+        raise typer.Abort()
 
     _verbose = None
     for v in Verbose:
