@@ -24,6 +24,9 @@ autoflake = "^1.4"
 [tool.poetry.scripts]
 judge = "judge.__init__:app"
 
+[tool.isort]
+profile = "black"
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

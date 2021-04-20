@@ -8,7 +8,7 @@ import typer
 from judge.rendering.history import Verbose, render_history
 from judge.rendering.summary import render_summary
 from judge.schema import CompareMode
-from judge.tools import testing, format
+from judge.tools import format, testing
 
 
 class Execution(str, Enum):
@@ -41,7 +41,9 @@ def main(
     mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help=""),
     tolerance: Optional[float] = typer.Option(None, "--tol", help=""),
     jobs: Optional[int] = typer.Option(None, "--jobs", help=""),
-    verbose: VerboseStr = typer.Option(VerboseStr.error, "-v", "--verbose", help=""),
+    verbose: VerboseStr = typer.Option(
+        VerboseStr.error_detail, "-v", "--verbose", help=""
+    ),
 ) -> None:
 
     """

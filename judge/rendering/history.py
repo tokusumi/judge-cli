@@ -52,8 +52,12 @@ def render_history(history: History, verbose: Verbose) -> None:
 
             techo(f"[{stat.style()}] {history.testcase.name} / {elapsed} / {memory}")
 
-        if verbose <= Verbose.error_detail:
-            if stat == JudgeStatus.WA.value or verbose <= Verbose.detail:
+        if stat not in {JudgeStatus.TLE.value, JudgeStatus.MLE.value}:
+            if (
+                verbose == Verbose.error_detail
+                and (stat == JudgeStatus.WA.value or stat == JudgeStatus.RE.value)
+            ) or verbose <= Verbose.detail:
+
                 techo("\nInput: ")
                 if history.testcase.in_path:
                     techo(file(history.testcase.in_path))
