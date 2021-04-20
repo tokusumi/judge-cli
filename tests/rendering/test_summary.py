@@ -1,5 +1,5 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from judge.rendering.summary import render_summary as rs
 from judge.schema import History, JudgeStatus, TestCasePath

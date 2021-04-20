@@ -8,11 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator, List, Optional
 
-from judge.schema import (CompareMode, History, JudgeStatus, TestCasePath,
-                          TimerMode)
+from judge.schema import CompareMode, History, JudgeStatus, TestCasePath, TimerMode
 from judge.tools import comparator, utils
-from judge.tools.format import (construct_relationship_of_files,
-                                drop_backup_or_hidden_files, glob_with_format)
+from judge.tools.format import (
+    construct_relationship_of_files,
+    drop_backup_or_hidden_files,
+    glob_with_format,
+)
 
 MEMORY_WARNING = 500  # megabyte
 MEMORY_PRINT = 100  # megabyte
