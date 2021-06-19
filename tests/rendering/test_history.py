@@ -1,5 +1,5 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from judge.rendering.history import Verbose
 from judge.rendering.history import render_history as rh

@@ -1,6 +1,6 @@
 import typer
 
-from judge import download, testing, configure
+from judge import configure, download, testing
 
 app = typer.Typer()
 app.command("download")(download.main)

@@ -1,11 +1,7 @@
 import abc
-
-# import tempfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional
-
-# from judge.tools.utils import exec_command
 
 
 class OutputComparator(abc.ABC):
