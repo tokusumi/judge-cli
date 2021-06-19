@@ -15,5 +15,8 @@ def test_app():
     result = runner.invoke(app, ["download", "--help"])
     assert result.exit_code == 0, result.stdout
 
+    result = runner.invoke(app, ["add", "--help"])
+    assert result.exit_code == 0, result.stdout
+
     result = runner.invoke(app, ["test", "--help"])
     assert result.exit_code == 0, result.stdout
