@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional, Union
 
 import typer
 from prompt_toolkit import prompt as prompt_toolkit
@@ -8,6 +8,17 @@ from prompt_toolkit.completion import Completer, PathCompleter, WordCompleter
 from pydantic import BaseSettings, DirectoryPath, FilePath
 from pydantic.error_wrappers import ValidationError
 from pydantic.fields import ModelField
+
+
+def to_abs(base: Union[Path, str]) -> Callable[[Path], Path]:
+    base = Path(base)
+
+    def _to_abs(path: Path) -> Path:
+        if not path.is_absolute():
+            return base / path
+        return path
+
+    return _to_abs
 
 
 def type_to_completer(field: ModelField) -> Optional[Completer]:
@@ -59,21 +70,30 @@ def pydantic_prompt(
 class BasePrompt(BaseSettings):
     """Global configurations."""
 
+    workdir: DirectoryPath
+
     def ask(self, key: str, msg: str) -> None:
+
         field = self.__fields__.get(key)
         if not field:
             return
         default = self.__getattribute__(key)
         _prompt = pydantic_prompt(msg, default=default, field=field)
-
+        value: Optional[str] = None
         for _ in range(5):
-            item: Any = _prompt()
+            item: str = _prompt()
+
             if item == "":
                 if default:
-                    item = default
+                    value = default
                 else:
-                    item = None
-            v_, err_ = field.validate(item, {}, loc=key, cls=self.__class__)
+                    value = None
+            else:
+                _t = field.type_
+                if _t is Path or _t is FilePath or _t is DirectoryPath:
+                    value = str(to_abs(self.workdir)(Path(item)).resolve())
+
+            v_, err_ = field.validate(value, {}, loc=key, cls=self.__class__)
             if not err_:
                 self.__setattr__(key, v_)
                 return

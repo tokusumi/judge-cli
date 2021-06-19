@@ -1,4 +1,5 @@
 import tempfile
+from pathlib import Path
 
 import pytest
 import typer
@@ -22,8 +23,9 @@ def test_conf(mocker):
     mocker.patch("judge.tools.prompt.pydantic_prompt", return_value=dummy)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        test_dir = Path(tempdir) / "tests"
         # success to create configuration file
-        result = runner.invoke(app, [tempdir])
+        result = runner.invoke(app, [tempdir, "--dir", test_dir])
         assert result.exit_code == 0, result.stdout
 
         # modify it
