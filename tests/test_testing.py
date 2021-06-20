@@ -5,10 +5,12 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from judge.configure import main as c_main
 from judge.testing import main
 
 app = typer.Typer()
 app.command()(main)
+app.command("conf")(c_main)
 
 runner = CliRunner()
 
@@ -21,20 +23,29 @@ def test_testing():
         with open(solution_file, "w") as f:
             f.write(solution)
 
-        # success for download and testing
-        result = runner.invoke(app, [solution_file, "abc051", "a", tempdir])
-        assert result.exit_code == 0, result.stdout
-
-        # success for capital case for problem
-        result = runner.invoke(app, [solution_file, "abc051", "A", tempdir])
-        assert result.exit_code == 0, result.stdout
-
-        # success to use Python3 and PyPy3
         result = runner.invoke(
-            # app, [solution_file, "abc051", "a", tempdir, "--py", "--pypy"]
-            app,
-            [solution_file, "abc051", "a", tempdir, "--py"],
+            app, ["conf", tempdir, "--contest", "abc100", "--problem", "a"]
         )
+        assert result.exit_code == 0, result.stdout
+        # success for download and testing
+        result = runner.invoke(app, ["main", tempdir, "-f", solution_file])
+        assert result.exit_code == 0, result.stdout
+        # success to use Python3 and PyPy3
+        result = runner.invoke(app, ["main", tempdir, "-f", solution_file, "--py"])
+        assert result.exit_code == 0, result.stdout
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        solution = """print(input().replace(",", " "))"""
+        solution_file = os.path.join(tempdir, "solve.py")
+        with open(solution_file, "w") as f:
+            f.write(solution)
+
+        result = runner.invoke(
+            app, ["conf", tempdir, "--contest", "abc100", "--problem", "A"]
+        )
+        assert result.exit_code == 0, result.stdout
+        # success for capital case for problem
+        result = runner.invoke(app, ["main", tempdir, "-f", solution_file])
         assert result.exit_code == 0, result.stdout
 
 
@@ -45,21 +56,37 @@ def test_testing_failed():
         solution_file = os.path.join(tempdir, "solve.py")
         with open(solution_file, "w") as f:
             f.write(solution)
+        result = runner.invoke(app, ["conf", tempdir, "--file", solution_file])
+        assert result.exit_code == 0, result.stdout
 
-        # wrong contest name
-        os.makedirs(os.path.join(tempdir, "a-b-c051_a"))
-        result = runner.invoke(app, [solution_file, "a-b-c051", "a", tempdir])
+        # no target test directory
+        result = runner.invoke(app, ["main", tempdir])
         assert result.exit_code == 1, result.stdout
 
-        # invalid problem
-        os.makedirs(os.path.join(tempdir, "abc051_g"))
-        result = runner.invoke(app, [solution_file, "abc051", "g", tempdir])
+    with tempfile.TemporaryDirectory() as tempdir:
+        result = runner.invoke(
+            app, ["conf", tempdir, "--contest", "abc100", "--problem", "a"]
+        )
+        assert result.exit_code == 0, result.stdout
+
+        # no target file
+        result = runner.invoke(app, ["main", tempdir])
         assert result.exit_code == 1, result.stdout
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        result = runner.invoke(
+            app, ["conf", tempdir, "--contest", "abc100", "--problem", "a"]
+        )
+        assert result.exit_code == 0, result.stdout
+
+        solution = """print(input().replace(",", " "))"""
+        solution_file = os.path.join(tempdir, "solve.py")
+        with open(solution_file, "w") as f:
+            f.write(solution)
 
         # invalid verbose
-        os.makedirs(os.path.join(tempdir, "abc051_g"))
         result = runner.invoke(
-            app, [solution_file, "abc051", "a", tempdir, "--verbose", "-1"]
+            app, ["main", tempdir, "-f", solution_file, "--verbose", "-1"]
         )
         assert result.exit_code == 1, result.stdout
 
@@ -71,7 +98,9 @@ def test_no_confirm():
         solution_file = os.path.join(tempdir, "solve.py")
         with open(solution_file, "w") as f:
             f.write(solution)
-
+        result = runner.invoke(
+            app, ["conf", tempdir, "--contest", "abc100", "--problem", "a"]
+        )
         # abort for download
-        result = runner.invoke(app, [solution_file, "abc051", "a", tempdir], input="n")
+        result = runner.invoke(app, ["main", tempdir, "-f", solution_file], input="n")
         assert result.exit_code == 1, result.stdout

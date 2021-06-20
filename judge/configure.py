@@ -1,83 +1,13 @@
-from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Type, TypeVar
+from typing import Optional
 
-import toml
 import typer
-from pydantic import BaseSettings, DirectoryPath, HttpUrl, ValidationError
+from pydantic import ValidationError
 from typer import Option as opt
 
-from judge.schema import CompareMode
+from judge.schema import CompareMode, JudgeConfig
 from judge.tools.download import url_from_contest
-from judge.tools.prompt import BasePrompt, to_abs
-
-if TYPE_CHECKING:
-    Model = TypeVar("Model", bound="BaseJudgeConfig")
-
-
-class BaseJudgeConfig(BasePrompt, BaseSettings):
-    """Global configurations."""
-
-    @classmethod
-    def from_toml(cls: Type["Model"], path: Path, auto_error: bool = True) -> "Model":
-        _path = path / ".judgecli"
-        if not path.exists():
-            path.mkdir(parents=True)
-        if not _path.exists():
-            _path.touch()
-
-        d = toml.load(open(_path)).get("judgecli", {})
-        if d.get("workdir") is not None:
-            if d.get("workdir") != str(path.resolve()):
-                raise KeyError("Found irrelevant configuration file.")
-        else:
-            d["workdir"] = path
-        if not d:
-            return cls()
-        if auto_error:
-            return cls(**d)
-        else:
-            return cls.construct(**d)
-
-    def save(self, path: Path) -> None:
-        c_file = path / ".judgecli"
-        if not c_file.exists():
-            c_file.touch()
-
-        body = toml.load(c_file.open())
-
-        part = body.get("judgecli", {})
-        if not isinstance(part, dict):
-            raise ValueError("check [judgecli] section in .judgecli")
-
-        for key, value in self.dict().items():
-            if isinstance(value, Enum):
-                value = value.value
-            elif isinstance(value, Path):
-                value = str(value.resolve())
-            elif isinstance(value, HttpUrl):
-                value = str(value)
-            part[key] = value
-        body["judgecli"] = part
-        toml.dump(body, c_file.open("w"))
-
-
-class JudgeConfig(BaseJudgeConfig):
-    workdir: DirectoryPath
-    URL: Optional[HttpUrl] = None
-    file: Optional[Path] = None
-    contest: Optional[str] = None
-    problem: Optional[str] = None
-    testdir: Optional[DirectoryPath] = None
-    py: bool = True
-    pypy: bool = False
-    cython: bool = False
-    mle: Optional[float] = 256
-    tle: Optional[float] = 2000
-    mode: CompareMode = CompareMode.EXACT_MATCH
-    tolerance: Optional[float] = None
-    jobs: Optional[int] = None
-    verbose: int = 10
+from judge.tools.prompt import to_abs
 
 
 def main(
@@ -128,7 +58,7 @@ def main(
     if file is not None: _config["file"] = abspath(file)  # noqa: E701
     if contest is not None: _config["contest"] = contest  # noqa: E701
     if problem is not None: _config["problem"] = problem  # noqa: E701
-    if test_dir is not None: 
+    if test_dir is not None:
         testdir = abspath(test_dir)
         if not testdir.exists():
             testdir.mkdir(parents=True)
@@ -154,14 +84,13 @@ def main(
     except ValidationError as e:
         raise typer.Abort(str(e))
 
-    URL: Optional[str] = None
     # fmt: off
     if interactive_init:
         if file is None: config.ask("file", "file")  # noqa: E701
         if contest is None: config.ask("contest", "contest")  # noqa: E701
         if problem is None: config.ask("problem", "problem")  # noqa: E701
-        if config.URL is None and config.contest and config.problem: 
-            URL = url_from_contest(config.contest, config.problem)  # noqa: E701
+        if config.URL is None and config.contest and config.problem:
+            config.URL = url_from_contest(config.contest, config.problem)  # type: ignore
         if url is None: config.ask("URL", "URL")  # noqa: E701
         if test_dir is None: config.ask("testdir", "testdir")  # noqa: E701
     if interactive_prob:
@@ -176,10 +105,8 @@ def main(
         if cython is None: config.ask("cython", "cython")  # noqa: E701
         if jobs is None: config.ask("jobs", "jobs")  # noqa: E701
     # fmt: on
-
     _dict = config.dict()
-    if URL:
-        _dict["URL"] = URL
+
     try:
         config = JudgeConfig(**_dict)
     except ValidationError as e:

@@ -92,7 +92,8 @@ class BasePrompt(BaseSettings):
                 _t = field.type_
                 if _t is Path or _t is FilePath or _t is DirectoryPath:
                     value = str(to_abs(self.workdir)(Path(item)).resolve())
-
+                else:
+                    value = item
             v_, err_ = field.validate(value, {}, loc=key, cls=self.__class__)
             if not err_:
                 self.__setattr__(key, v_)
