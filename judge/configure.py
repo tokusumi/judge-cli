@@ -54,12 +54,13 @@ def main(
 
     abspath = to_abs(workdir)
 
-    # fmt: off
     _config = config.dict()
     base_test_dir = abspath(Path("tests"))
-    if file is not None: _config["file"] = abspath(file)  # noqa: E701
-    if contest is not None: _config["contest"] = contest  # noqa: E701
-    if problem is not None: _config["problem"] = problem  # noqa: E701
+    if file is not None:
+        _config["file"] = abspath(file)
+        if not _config["file"].exists():
+            _config["file"].parent.mkdir(parents=True, exist_ok=True)
+            _config["file"].touch()
     if test_dir is not None:
         testdir = abspath(test_dir)
         if not testdir.exists():
@@ -69,6 +70,9 @@ def main(
         if not base_test_dir.exists():
             base_test_dir.mkdir(parents=True)
         _config["testdir"] = base_test_dir.resolve()
+    # fmt: off
+    if contest is not None: _config["contest"] = contest  # noqa: E701
+    if problem is not None: _config["problem"] = problem  # noqa: E701
     if contest and problem: _config["URL"] = url_from_contest(contest, problem)  # noqa: E701
     if url is not None: _config["URL"] = url  # noqa: E701
     if py is not None: _config["py"] = py  # noqa: E701

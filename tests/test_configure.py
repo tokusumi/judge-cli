@@ -32,6 +32,13 @@ def test_conf(mocker):
         result = runner.invoke(app, [tempdir, "--problem", "a"])
         assert result.exit_code == 0, result.stdout
 
+        # create non existing solution file
+        sol_file = Path(tempdir) / "a.py"
+        assert not sol_file.exists()
+        result = runner.invoke(app, [tempdir, "--file", sol_file])
+        assert result.exit_code == 0, result.stdout
+        assert sol_file.exists()
+
     with tempfile.TemporaryDirectory() as tempdir:
         # success to create configuration file
         result = runner.invoke(app, [tempdir, "-ii"])

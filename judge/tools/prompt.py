@@ -91,7 +91,16 @@ class BasePrompt(BaseSettings):
             else:
                 _t = field.type_
                 if _t is Path or _t is FilePath or _t is DirectoryPath:
-                    value = str(to_abs(self.workdir)(Path(item)).resolve())
+                    _p = to_abs(self.workdir)(Path(item)).resolve()
+                    if not _p.exists():
+                        if _p.is_file():
+                            # solution file path
+                            _p.parent.mkdir(parents=True, exist_ok=True)
+                            _p.touch()
+                        elif _p.is_dir():
+                            # testdir
+                            _p.mkdir(parents=True)
+                    value = str(_p)
                 else:
                     value = item
             v_, err_ = field.validate(value, {}, loc=key, cls=self.__class__)
