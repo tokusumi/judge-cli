@@ -52,10 +52,7 @@ def test_testing():
 @pytest.mark.download
 def test_testing_failed():
     with tempfile.TemporaryDirectory() as tempdir:
-        solution = """print(input().replace(",", " "))"""
         solution_file = os.path.join(tempdir, "solve.py")
-        with open(solution_file, "w") as f:
-            f.write(solution)
         result = runner.invoke(app, ["conf", tempdir, "--file", solution_file])
         assert result.exit_code == 0, result.stdout
 
