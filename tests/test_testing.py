@@ -84,11 +84,17 @@ def test_testing_failed():
         with open(solution_file, "w") as f:
             f.write(solution)
 
-        # invalid verbose
+        # invalid test case
         result = runner.invoke(
-            app, ["main", tempdir, "-f", solution_file, "--verbose", "-1"]
+            app, ["main", tempdir, "-f", solution_file, "--case", "sample100"]
         )
         assert result.exit_code == 1, result.stdout
+
+        # invalid verbose
+        result = runner.invoke(
+            app, ["main", tempdir, "-f", solution_file, "--verbose", "not-supported"]
+        )
+        assert result.exit_code == 2, result.stdout
 
 
 @pytest.mark.download

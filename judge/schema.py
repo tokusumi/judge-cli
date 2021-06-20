@@ -84,6 +84,14 @@ class JudgeStatus(Enum):
     MLE = MLE_
 
 
+class VerboseStr(str, Enum):
+    error = "error"
+    error_detail = "error_detail"
+    all = "all"
+    detail = "detail"
+    dd = "dd"
+
+
 @dataclass
 class History:
     status: JudgeStatus
@@ -109,4 +117,4 @@ class JudgeConfig(BaseJudgeConfig):
     mode: CompareMode = CompareMode.EXACT_MATCH
     tolerance: Optional[float] = None
     jobs: Optional[int] = None
-    verbose: int = 10
+    verbose: VerboseStr = VerboseStr.error_detail

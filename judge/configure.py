@@ -48,7 +48,8 @@ def main(
     try:
         config = JudgeConfig.from_toml(workdir, auto_error=False)
     except KeyError as e:
-        raise typer.Abort(str(e))
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
 
     abspath = to_abs(workdir)
 
@@ -82,7 +83,8 @@ def main(
     try:
         config = JudgeConfig(**_config)
     except ValidationError as e:
-        raise typer.Abort(str(e))
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
 
     # fmt: off
     if interactive_init:
@@ -110,7 +112,8 @@ def main(
     try:
         config = JudgeConfig(**_dict)
     except ValidationError as e:
-        typer.Abort(e)
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        typer.Abort()
 
     pretty_config = "\n".join(
         [" = ".join([str(f) for f in c]) for c in config if c[1] is not None]

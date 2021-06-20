@@ -9,8 +9,8 @@ from pydantic.types import DirectoryPath
 
 from judge.rendering.history import Verbose, render_history
 from judge.rendering.summary import render_summary
-from judge.schema import CompareMode, JudgeConfig
-from judge.tools import testing
+from judge.schema import CompareMode, JudgeConfig, VerboseStr
+from judge.tools import format, testing
 from judge.tools.prompt import to_abs
 
 
@@ -28,7 +28,10 @@ class TestJudgeConfig(JudgeConfig):
 def main(
     workdir: Path = typer.Argument(".", help="a directory path for working directory"),
     file: Optional[Path] = typer.Option(None, "-f", help="execution file"),
-    py: bool = typer.Option(True, "--py", help="set if you execute Python3"),
+    case: Optional[str] = typer.Option(
+        None, "--case", help="set target test case manually"
+    ),
+    py: bool = typer.Option(False, "--py", help="set if you execute Python3"),
     pypy: bool = typer.Option(False, "--pypy", help="set if you execute PyPy3"),
     cython: bool = typer.Option(False, "--cython", help="set if you execute Cython3"),
     mle: Optional[float] = typer.Option(None, "--mle", help=""),
@@ -36,7 +39,9 @@ def main(
     mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help=""),
     tolerance: Optional[float] = typer.Option(None, "--tol", help=""),
     jobs: Optional[int] = typer.Option(None, "--jobs", help=""),
-    verbose: Optional[int] = typer.Option(None, "--verbose", help=""),
+    verbose: VerboseStr = typer.Option(
+        VerboseStr.error_detail, "-v", "--verbose", help=""
+    ),
 ) -> None:
 
     """
@@ -52,6 +57,7 @@ def main(
     typer.echo("Load configuration...")
 
     if not workdir.exists():
+        typer.secho(f"Not exists: {str(workdir.resolve())}", fg=typer.colors.BRIGHT_RED)
         raise typer.Abort(f"Not exists: {str(workdir.resolve())}")
 
     try:
@@ -131,20 +137,31 @@ def main(
     if not execs:
         execs.append(f"python3 {file.name}")
 
+    if case is None:
+        tests: List[Path] = []
+    else:
+        # collect test cases path manually
+        tests = format.glob_with_samplename(test_dir, case)
+        if not tests:
+            typer.secho(
+                f"Not found test case: {case} in {test_dir}", fg=typer.colors.RED
+            )
+            raise typer.Abort()
+
     testcases = testing.get_testcases(
         testing.GetTestCasesArgs(
-            test=[],
+            test=tests,
             directory=test_dir,
             format="sample%s.%e",
             ignore_backup=True,
         )
     )
+    if not testcases:
+        typer.secho("Not found test cases", fg=typer.colors.RED)
+        raise typer.Abort()
 
-    _verbose = None
-    for v in Verbose:
-        if config.verbose == v.value:
-            _verbose = v
-    if not _verbose:
+    _verbose: Optional[Verbose] = Verbose.__members__.get(verbose.name)
+    if _verbose is None:
         typer.secho("invalid verbose", fg=typer.colors.RED)
         raise typer.Abort()
 
@@ -165,6 +182,7 @@ def main(
             )
         )
         _histories = []
+
         for history in histories:
             render_history(history, _verbose)
             _histories.append(history)

@@ -36,7 +36,16 @@ def embedd_percentformat(s: str) -> str:
 
 def glob_with_format(directory: Path, format: str) -> List[Path]:
     embeddable_format = embedd_percentformat(format)
-    paths = list(directory.glob(embeddable_format.format(s="*", e="*")))
+    paths = list(
+        directory.glob(
+            embeddable_format.format(s="*", e="*", i="*", n="*", b="*", d="*")
+        )
+    )
+    return paths
+
+
+def glob_with_samplename(directory: Path, name: str) -> List[Path]:
+    paths = list(directory.glob(f"{name}.*"))
     return paths
 
 

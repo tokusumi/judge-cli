@@ -36,7 +36,8 @@ def main(
     typer.echo("Load configuration...")
 
     if not workdir.exists():
-        raise typer.Abort(f"Not exists: {str(workdir.resolve())}")
+        typer.secho(f"Not exists: {str(workdir.resolve())}", fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
 
     try:
         _config = JudgeConfig.from_toml(workdir)
@@ -44,18 +45,19 @@ def main(
         typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
         raise typer.Abort()
 
+    __config = _config.dict()
+
     if url or directory:
         # check arguments
-        try:
-            __config = _config.dict()
-            if url:
-                __config["URL"] = url
-            if directory:
-                __config["testdir"] = directory.resolve()
-            config = DownloadJudgeConfig(**__config)
-        except KeyError as e:
-            typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
-            raise typer.Abort()
+        if url:
+            __config["URL"] = url
+        if directory:
+            __config["testdir"] = directory.resolve()
+    try:
+        config = DownloadJudgeConfig(**__config)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
 
     typer.echo(f"Download {config.URL}")
 
