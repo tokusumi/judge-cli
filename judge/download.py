@@ -1,17 +1,26 @@
 from pathlib import Path
+from typing import Optional
 
 import typer
 from onlinejudge import utils
+from pydantic.networks import HttpUrl
+from pydantic.types import DirectoryPath
 
+from judge.schema import JudgeConfig
 from judge.tools.download import DownloadArgs, SaveArgs
 from judge.tools.download import download as download_tool
 from judge.tools.download import save as save_tool
 
 
+class DownloadJudgeConfig(JudgeConfig):
+    URL: HttpUrl
+    testdir: DirectoryPath
+
+
 def main(
-    contest: str,
-    problem: str,
-    directory: Path = typer.Argument("tests", help="a directory path for test cases"),
+    workdir: Path = typer.Argument(".", help="a directory path for working directory"),
+    url: Optional[str] = typer.Option(None, help="a download URL"),
+    directory: Path = typer.Option(None, help="a directory path for test cases"),
     no_store: bool = typer.Option(False, help="testcases is shown but not saved"),
     format: str = typer.Option("sample-%i.%e", help="custom filename format"),
     cookie: Path = typer.Option(utils.default_cookie_path, help="directory for cookie"),
@@ -19,23 +28,49 @@ def main(
     """
     Here is shortcut for download with `online-judge-tools`.
 
+    At first, call `judge conf` for configuration.
     Pass `problem` at `contest` you want to test.
 
     Ex) the following leads to download test cases for Problem `C` at `ABC 051`:
-    ```download abc051 c```
+    ```download```
     """
-    typer.echo(f"Download {contest}")
+    typer.echo("Load configuration...")
+
+    if not workdir.exists():
+        typer.secho(f"Not exists: {str(workdir.resolve())}", fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    try:
+        _config = JudgeConfig.from_toml(workdir)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    __config = _config.dict()
+
+    if url or directory:
+        # check arguments
+        if url:
+            __config["URL"] = url
+        if directory:
+            __config["testdir"] = directory.resolve()
+    try:
+        config = DownloadJudgeConfig(**__config)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    typer.echo(f"Download {config.URL}")
 
     try:
         testcases = download_tool(
             DownloadArgs(
-                contest=contest,
-                no=problem,
+                url=config.URL,
                 cookie=cookie,
             )
         )
     except Exception as e:
-        typer.echo(e)
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
         raise typer.Abort()
 
     if not no_store:
@@ -44,11 +79,11 @@ def main(
                 testcases,
                 SaveArgs(
                     format=format,
-                    directory=directory / f"{contest}_{problem}",
+                    directory=Path(config.testdir),
                 ),
             )
         except Exception as e:
-            typer.echo(e)
+            typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
             raise typer.Abort()
 
 

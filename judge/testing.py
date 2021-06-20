@@ -4,11 +4,14 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
+from pydantic import FilePath, ValidationError
+from pydantic.types import DirectoryPath
 
 from judge.rendering.history import Verbose, render_history
 from judge.rendering.summary import render_summary
-from judge.schema import CompareMode
+from judge.schema import CompareMode, JudgeConfig, VerboseStr
 from judge.tools import format, testing
+from judge.tools.prompt import to_abs
 
 
 class Execution(str, Enum):
@@ -17,47 +20,76 @@ class Execution(str, Enum):
     cython = "cy"
 
 
-class VerboseStr(str, Enum):
-    error = "error"
-    error_detail = "error_detail"
-    all = "all"
-    detail = "detail"
-    dd = "dd"
+class TestJudgeConfig(JudgeConfig):
+    file: FilePath
+    testdir: DirectoryPath
 
 
 def main(
-    file: str,
-    contest: str,
-    problem: str,
-    directory: Path = typer.Argument("tests", help="a directory path for test cases"),
-    case: Optional[str] = typer.Option(
-        None, "--case", help="set target test case manually"
-    ),
-    py: bool = typer.Option(False, "--py", help="set if you execute Python3"),
-    pypy: bool = typer.Option(False, "--pypy", help="set if you execute PyPy3"),
-    cython: bool = typer.Option(False, "--cython", help="set if you execute Cython3"),
-    mle: Optional[float] = typer.Option(256, "--mle", help=""),
-    tle: Optional[float] = typer.Option(2000, "--tle", help=""),
-    mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help=""),
-    tolerance: Optional[float] = typer.Option(None, "--tol", help=""),
-    jobs: Optional[int] = typer.Option(None, "--jobs", help=""),
-    verbose: VerboseStr = typer.Option(
-        VerboseStr.error_detail, "-v", "--verbose", help=""
-    ),
+    # fmt: off
+    workdir: Path = typer.Argument(".", help="A directory path for working directory"),
+    # initial option
+    file: Optional[Path] = typer.Option(None, "-f", help="Solution file path"),
+    case: Optional[str] = typer.Option(None, "--case", help="set target test case manually"),
+    # problem option
+    tolerance: Optional[float] = typer.Option(None, "--tol", help="Set if problem require correctness within absolute or relative error"),
+    mle: Optional[float] = typer.Option(None, "--mle", help="Memory limit (default: 1024 MB)"),
+    tle: Optional[float] = typer.Option(None, "--tle", help="Time limit (default: 2000 ms)"),
+    mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help="Compare mode. (exact-match): AC if absolutely same answered. (crlf-insensitive-exact-match): ignore escape format (CR, LF, CRLF). (ignore-spaces): ignore extra spaces. (ignore-spaces-and-newlines): ignore extra spaces and extra new lines."),
+    # additional option
+    verbose: VerboseStr = typer.Option(VerboseStr.error_detail, "-v", "--verbose", help="Verbosity. (error): show only wrong answered testcase filename. (error-detail): show only wrong answered outputs. (all): show all sample status and wrong answered outputs. (detail): all answered status and outputs. (dd): only reserved. now same as `detail`"),
+    py: bool = typer.Option(False, "--py", help="Set if you execute Python3"),
+    pypy: bool = typer.Option(False, "--pypy", help="Set if you execute PyPy3"),
+    cython: bool = typer.Option(False, "--cython", help="Set if you execute Cython3"),
+    jobs: Optional[int] = typer.Option(None, "--jobs", help="Only reserved for the number of concurrency for testing"),
+    # fmt: on
 ) -> None:
-
     """
     Here is shortcut for testing with `online-judge-tools`.
 
+    At first, call `judge conf` for configuration.
     Pass `file` you want to test for `problem` at `contest`.
 
     Ex) the following leads to test `abc_051_b.py` with test cases for Problem `C` at `ABC 051`:
-    ```test abc_051_b.py abc051 c```
+    ```test -f abc_051_b.py```
 
     If not found test cases, you could let download them.
     """
+    typer.echo("Load configuration...")
+
+    if not workdir.exists():
+        typer.secho(f"Not exists: {str(workdir.resolve())}", fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort(f"Not exists: {str(workdir.resolve())}")
+
+    try:
+        config = JudgeConfig.from_toml(workdir)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    # override options and validate them
+    # fmt: off
+    abspath = to_abs(workdir)
+    _config = config.dict()
+    if file is not None: _config["file"] = abspath(file)  # noqa: E701
+    if py is not None: _config["py"] = py  # noqa: E701
+    if pypy is not None: _config["pypy"] = pypy  # noqa: E701
+    if cython is not None: _config["cython"] = cython  # noqa: E701
+    if mle is not None: _config["mle"] = mle  # noqa: E701
+    if tle is not None: _config["tle"] = tle  # noqa: E701
+    if mode is not None: _config["mode"] = mode  # noqa: E701
+    if tolerance is not None: _config["tolerance"] = tolerance  # noqa: E701
+    if jobs is not None: _config["jobs"] = jobs  # noqa: E701
+    if verbose is not None: _config["verbose"] = verbose  # noqa: E701
+    # fmt: on
+    try:
+        config = TestJudgeConfig(**_config)
+    except ValidationError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
     typer.echo("Check for test cases...")
-    test_dir = directory / f"{contest}_{problem}"
+    test_dir = Path(config.testdir)
 
     # only empty test dir is deleted
     try:
@@ -72,35 +104,39 @@ def main(
             typer.echo("Canceled download. Make sure to download test cases manually.")
             raise typer.Abort()
 
-        err = subprocess.run(
-            ["judge", "download", contest, problem, directory]
-        ).returncode
-        if err:
+        test_dir.mkdir(parents=True)
+        err = subprocess.run(["judge", "download", workdir, "--directory", test_dir])
+        if err.returncode:
+            typer.secho(err.stderr.decode(), fg=typer.colors.BRIGHT_RED)
             raise typer.Abort()
 
-    colored_file = typer.style(file, fg=typer.colors.BRIGHT_CYAN)
-    colored_dir = typer.style(f"{contest}_{problem}", fg=typer.colors.BRIGHT_CYAN)
+    file = Path(config.file)
+    testdir = Path(config.testdir)
+    colored_file = typer.style(file.name, fg=typer.colors.BRIGHT_CYAN)
+    colored_dir = typer.style(f"{testdir.name}", fg=typer.colors.BRIGHT_CYAN)
     typer.echo(f"\nTesting {colored_file} for {colored_dir}...\n")
-    execs = []
+    execs: List[str] = []
 
     typer.echo("execution versions:\n")
 
     if py:
-        execs.append(f"python3 {file}")
+        execs.append(f"python3 {file.name}")
         typer.secho("- Python3: ", fg=typer.colors.BRIGHT_CYAN)
-        err = subprocess.run(["python3", "-V"]).returncode
-        if err:
+        err = subprocess.run(["python3", "-V"])
+        if err.returncode:
+            typer.secho(err.stderr.decode(), fg=typer.colors.BRIGHT_RED)
             raise typer.Abort()
     if pypy:
-        execs.append(f"pypy3 {file}")
+        execs.append(f"pypy3 {file.name}")
         typer.secho("- PyPy3: ", fg=typer.colors.BRIGHT_CYAN)
-        err = subprocess.run(["pypy3", "-V"]).returncode
-        if err:
+        err = subprocess.run(["pypy3", "-V"])
+        if err.returncode:
+            typer.secho(err.stderr.decode(), fg=typer.colors.BRIGHT_RED)
             raise typer.Abort()
     # if cython:
     # pass
     if not execs:
-        execs.append(f"python3 {file}")
+        execs.append(f"python3 {file.name}")
 
     if case is None:
         tests: List[Path] = []
@@ -138,11 +174,11 @@ def main(
                 testcases=testcases,
                 command=prog,
                 gnu_time="gnu-time",
-                mle=mle,
-                tle=tle,
-                compare_mode=mode,
-                jobs=jobs,
-                error=tolerance,
+                mle=config.mle,
+                tle=config.tle,
+                compare_mode=config.mode,
+                jobs=config.jobs,
+                error=config.tolerance,
                 silent=True,
             )
         )

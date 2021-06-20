@@ -4,7 +4,10 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from pydantic import DirectoryPath, FilePath, HttpUrl
 from typing_extensions import Literal
+
+from judge.tools.config import BaseJudgeConfig
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,14 @@ class JudgeStatus(Enum):
     MLE = MLE_
 
 
+class VerboseStr(str, Enum):
+    error = "error"
+    error_detail = "error_detail"
+    all = "all"
+    detail = "detail"
+    dd = "dd"
+
+
 @dataclass
 class History:
     status: JudgeStatus
@@ -89,3 +100,21 @@ class History:
     exitcode: int
     elapsed: float
     memory: Optional[float] = None
+
+
+class JudgeConfig(BaseJudgeConfig):
+    workdir: DirectoryPath
+    URL: Optional[HttpUrl] = None
+    file: Optional[FilePath] = None
+    contest: Optional[str] = None
+    problem: Optional[str] = None
+    testdir: Optional[DirectoryPath] = None
+    py: bool = True
+    pypy: bool = False
+    cython: bool = False
+    mle: Optional[float] = 1024
+    tle: Optional[float] = 2000
+    mode: CompareMode = CompareMode.EXACT_MATCH
+    tolerance: Optional[float] = None
+    jobs: Optional[int] = None
+    verbose: VerboseStr = VerboseStr.error_detail

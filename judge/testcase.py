@@ -3,29 +3,56 @@ from pathlib import Path
 
 import typer
 from onlinejudge import utils
+from pydantic.types import DirectoryPath
+
+from judge.schema import JudgeConfig
 
 MAX_SAMPLE_NUM = 100
 
 
+class AddJudgeConfig(JudgeConfig):
+    testdir: DirectoryPath
+
+
 def main(
-    contest: str,
-    problem: str,
-    directory: Path = typer.Argument("tests", help="a directory path for test cases"),
+    workdir: Path = typer.Argument(".", help="a directory path for working directory"),
+    directory: Path = typer.Option(None, help="a directory path for test cases"),
     format: str = typer.Option("sample-u%i.%e", help="custom filename format"),
     cookie: Path = typer.Option(utils.default_cookie_path, help="directory for cookie"),
 ) -> None:
     """
     Here is shortcut for add new brank testcase files.
 
-    Pass `problem` at `contest` you want to add testcase for.
+    At first, call `judge conf` for configuration.
 
-    Ex) the following leads to download test cases and add testcase for Problem `C` at `ABC 051`:
-    ```add abc051 c```
+    Ex) the following leads to download test cases and add testcase for it:
+    ```add```
     """
-    typer.echo(f"Add testcase for {contest}")
+    typer.echo("Load configuration...")
+    if not workdir.exists():
+        typer.secho(f"Not exists: {str(workdir.resolve())}", fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    try:
+        _config = JudgeConfig.from_toml(workdir)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    __config = _config.dict()
+
+    if directory:
+        __config["testdir"] = directory.resolve()
+    try:
+        config = AddJudgeConfig(**__config)
+    except KeyError as e:
+        typer.secho(str(e), fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
+
+    typer.echo(f"Add testcase for {config.testdir}")
 
     typer.echo("Check for test cases...")
-    test_dir = directory / f"{contest}_{problem}"
+    test_dir = Path(config.testdir)
 
     # only empty test dir is deleted
     try:
@@ -37,15 +64,16 @@ def main(
         confirm: str = typer.prompt(
             "Are you sure you want to download test cases?", default="no"
         )
+        test_dir.mkdir(parents=True)
         if confirm.lower() in {"yes", "y"}:
             err = subprocess.run(
-                ["judge", "download", contest, problem, directory]
-            ).returncode
-            if err:
+                ["judge", "download", config.workdir, "--directory", test_dir]
+            )
+            if err.returncode:
+                typer.secho(str(err.stderr), fg=typer.colors.BRIGHT_RED)
                 raise typer.Abort()
         else:
             typer.echo("Skip to download system testcase.")
-            test_dir.mkdir(parents=True)
 
     embbed = format.replace("%e", "in")
     idx = 1
@@ -54,7 +82,8 @@ def main(
             idx = i
             break
     else:
-        raise typer.Abort("Can't create new sample")
+        typer.secho("Can't create new sample", fg=typer.colors.BRIGHT_RED)
+        raise typer.Abort()
 
     sample_in = test_dir / format.replace("%i", f"{idx}").replace("%e", "in")
     sample_out = test_dir / format.replace("%i", f"{idx}").replace("%e", "out")
