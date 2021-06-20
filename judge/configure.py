@@ -5,43 +5,44 @@ import typer
 from pydantic import ValidationError
 from typer import Option as opt
 
-from judge.schema import CompareMode, JudgeConfig
+from judge.schema import CompareMode, JudgeConfig, VerboseStr
 from judge.tools.download import url_from_contest
 from judge.tools.prompt import to_abs
 
 
 def main(
-    workdir: Path = typer.Argument("", help=""),
+    # fmt: off
+    workdir: Path = typer.Argument("", help="A directory path for working directory"),
     # initial option
-    interactive_init: bool = opt(False, "-ii", help=""),
-    contest: Optional[str] = opt(None, "--contest", help=""),
-    problem: Optional[str] = opt(None, "--problem", help=""),
-    url: Optional[str] = opt(None, "--url", help=""),
-    file: Optional[Path] = opt(None, "--file", help=""),
-    test_dir: Path = opt(None, "--dir", help="a directory path for test cases"),
+    interactive_init: bool = opt(False, "-ii", help="Interactive configuration for basic option: contest, problem, download URL, solution file and test directory."),
+    contest: Optional[str] = opt(None, "--contest", help="Contest name. ex: abc100, agc050"),
+    problem: Optional[str] = opt(None, "--problem", help="Problem name. ex: a, b, c, ..."),
+    url: Optional[str] = opt(None, "--url", help="Testcase download URL. if you set contest and problem correctly, this is automatically determined."),
+    file: Optional[Path] = opt(None, "--file", help="Solution file path"),
+    test_dir: Path = opt(None, "--dir", help="A directory path for test cases"),
     # problem option
-    interactive_prob: bool = opt(False, "-ip", help=""),
-    tolerance: Optional[float] = opt(None, "--tol", help=""),
-    mle: Optional[float] = opt(None, "--mle", help=""),
-    tle: Optional[float] = opt(None, "--tle", help=""),
-    mode: Optional[CompareMode] = opt(None, "--mode", help=""),
+    interactive_prob: bool = opt(False, "-ip", help="Interactive configuration for evaluation option: tolerance, MLE, TLE and compare mode."),
+    tolerance: Optional[float] = opt(None, "--tol", help="Set if problem require correctness within absolute or relative error"),
+    mle: Optional[float] = opt(None, "--mle", help="Memory limit (default: 1024 MB)"),
+    tle: Optional[float] = opt(None, "--tle", help="Time limit (default: 2000 ms)"),
+    mode: Optional[CompareMode] = opt(None, "--mode", help="Compare mode. (exact-match): AC if absolutely same answered. (crlf-insensitive-exact-match): ignore escape format (CR, LF, CRLF). (ignore-spaces): ignore extra spaces. (ignore-spaces-and-newlines): ignore extra spaces and extra new lines."),
     # additional option
-    interactive_additional: bool = opt(False, "-ia", help=""),
-    verbose: Optional[int] = opt(None, "--verbose", help=""),
-    py: Optional[bool] = opt(None, "--py", help="set if you execute Python3"),
-    pypy: Optional[bool] = opt(None, "--pypy", help="set if you execute PyPy3"),
-    cython: Optional[bool] = opt(None, "--cython", help="set if you execute Cython3"),
-    jobs: Optional[int] = opt(None, "--jobs", help=""),
+    interactive_additional: bool = opt(False, "-ia", help="Interactive configuration for additional option: verbose, execution binary type."),
+    verbose: Optional[VerboseStr] = opt(None, "--verbose", help="Verbosity. (error): show only wrong answered testcase filename. (error-detail): show only wrong answered outputs. (all): show all sample status and wrong answered outputs. (detail): all answered status and outputs. (dd): only reserved. now same as `detail`"),
+    py: Optional[bool] = opt(None, "--py", help="Set if you execute Python3"),
+    pypy: Optional[bool] = opt(None, "--pypy", help="Set if you execute PyPy3"),
+    cython: Optional[bool] = opt(None, "--cython", help="Only reserved to set if you execute Cython3"),
+    jobs: Optional[int] = opt(None, "--jobs", help="Only reserved for the number of concurrency for testing"),
+    # fmt: on
 ) -> None:
     """
     Here is shortcut to optionally configure contest setup for testing.
 
-    Pass `directory` you want to configure.
+    (Optional) Pass `working directory` you want to configure.
 
-    Ex) the following leads to setup test configuration for Problem `C` at `ABC 051`:
+    Ex) the following leads to setup test configuration interactively:
     ```conf -ii```
     """
-    # TODO: add help and messages
     if not workdir.exists():
         workdir.mkdir(parents=True)
     workdir = workdir.resolve()

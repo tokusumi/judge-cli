@@ -26,27 +26,28 @@ class TestJudgeConfig(JudgeConfig):
 
 
 def main(
-    workdir: Path = typer.Argument(".", help="a directory path for working directory"),
-    file: Optional[Path] = typer.Option(None, "-f", help="execution file"),
-    case: Optional[str] = typer.Option(
-        None, "--case", help="set target test case manually"
-    ),
-    py: bool = typer.Option(False, "--py", help="set if you execute Python3"),
-    pypy: bool = typer.Option(False, "--pypy", help="set if you execute PyPy3"),
-    cython: bool = typer.Option(False, "--cython", help="set if you execute Cython3"),
-    mle: Optional[float] = typer.Option(None, "--mle", help=""),
-    tle: Optional[float] = typer.Option(None, "--tle", help=""),
-    mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help=""),
-    tolerance: Optional[float] = typer.Option(None, "--tol", help=""),
-    jobs: Optional[int] = typer.Option(None, "--jobs", help=""),
-    verbose: VerboseStr = typer.Option(
-        VerboseStr.error_detail, "-v", "--verbose", help=""
-    ),
+    # fmt: off
+    workdir: Path = typer.Argument(".", help="A directory path for working directory"),
+    # initial option
+    file: Optional[Path] = typer.Option(None, "-f", help="Solution file path"),
+    case: Optional[str] = typer.Option(None, "--case", help="set target test case manually"),
+    # problem option
+    tolerance: Optional[float] = typer.Option(None, "--tol", help="Set if problem require correctness within absolute or relative error"),
+    mle: Optional[float] = typer.Option(None, "--mle", help="Memory limit (default: 1024 MB)"),
+    tle: Optional[float] = typer.Option(None, "--tle", help="Time limit (default: 2000 ms)"),
+    mode: CompareMode = typer.Option(CompareMode.EXACT_MATCH.value, "--mode", help="Compare mode. (exact-match): AC if absolutely same answered. (crlf-insensitive-exact-match): ignore escape format (CR, LF, CRLF). (ignore-spaces): ignore extra spaces. (ignore-spaces-and-newlines): ignore extra spaces and extra new lines."),
+    # additional option
+    verbose: VerboseStr = typer.Option(VerboseStr.error_detail, "-v", "--verbose", help="Verbosity. (error): show only wrong answered testcase filename. (error-detail): show only wrong answered outputs. (all): show all sample status and wrong answered outputs. (detail): all answered status and outputs. (dd): only reserved. now same as `detail`"),
+    py: bool = typer.Option(False, "--py", help="Set if you execute Python3"),
+    pypy: bool = typer.Option(False, "--pypy", help="Set if you execute PyPy3"),
+    cython: bool = typer.Option(False, "--cython", help="Set if you execute Cython3"),
+    jobs: Optional[int] = typer.Option(None, "--jobs", help="Only reserved for the number of concurrency for testing"),
+    # fmt: on
 ) -> None:
-
     """
     Here is shortcut for testing with `online-judge-tools`.
 
+    At first, call `judge conf` for configuration.
     Pass `file` you want to test for `problem` at `contest`.
 
     Ex) the following leads to test `abc_051_b.py` with test cases for Problem `C` at `ABC 051`:

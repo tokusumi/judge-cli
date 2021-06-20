@@ -112,7 +112,7 @@ class JudgeConfig(BaseJudgeConfig):
     py: bool = True
     pypy: bool = False
     cython: bool = False
-    mle: Optional[float] = 256
+    mle: Optional[float] = 1024
     tle: Optional[float] = 2000
     mode: CompareMode = CompareMode.EXACT_MATCH
     tolerance: Optional[float] = None

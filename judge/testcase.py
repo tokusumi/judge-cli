@@ -23,9 +23,9 @@ def main(
     """
     Here is shortcut for add new brank testcase files.
 
-    Pass `problem` at `contest` you want to add testcase for.
+    At first, call `judge conf` for configuration.
 
-    Ex) the following leads to download test cases and add testcase for Problem `C` at `ABC 051`:
+    Ex) the following leads to download test cases and add testcase for it:
     ```add```
     """
     typer.echo("Load configuration...")

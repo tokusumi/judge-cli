@@ -28,6 +28,7 @@ def main(
     """
     Here is shortcut for download with `online-judge-tools`.
 
+    At first, call `judge conf` for configuration.
     Pass `problem` at `contest` you want to test.
 
     Ex) the following leads to download test cases for Problem `C` at `ABC 051`:
