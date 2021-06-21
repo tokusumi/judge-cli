@@ -90,16 +90,20 @@ class BasePrompt(BaseSettings):
                     value = None
             else:
                 _t = field.type_
-                if _t is Path or _t is FilePath or _t is DirectoryPath:
+                if _t is Path:
+                    value = str(to_abs(self.workdir)(Path(item)).resolve())
+                elif _t is FilePath:
                     _p = to_abs(self.workdir)(Path(item)).resolve()
                     if not _p.exists():
-                        if _p.is_file():
-                            # solution file path
-                            _p.parent.mkdir(parents=True, exist_ok=True)
-                            _p.touch()
-                        elif _p.is_dir():
-                            # testdir
-                            _p.mkdir(parents=True)
+                        # solution file path
+                        _p.parent.mkdir(parents=True, exist_ok=True)
+                        _p.touch()
+                    value = str(_p)
+                elif _t is DirectoryPath:
+                    _p = to_abs(self.workdir)(Path(item)).resolve()
+                    if not _p.exists():
+                        # testdir
+                        _p.mkdir(parents=True)
                     value = str(_p)
                 else:
                     value = item
