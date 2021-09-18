@@ -1,17 +1,18 @@
 import contextlib
 import http.cookiejar
 import os
+from abc import ABC
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import Generator, Iterator, List, Optional
+from typing import Generator, Iterator, List, Optional, Tuple
 
 import onlinejudge.dispatch as dispatch
 import onlinejudge.utils as utils
 import pkg_resources
 import requests
 from onlinejudge.service.yukicoder import YukicoderProblem
-from onlinejudge.type import Problem, SampleParseError, TestCase
+from onlinejudge.type import Problem, SampleParseError, Service, TestCase
 from requests.exceptions import InvalidURL
 from typing_extensions import Literal
 
@@ -47,6 +48,11 @@ def create_UA_session(
         raise
 
 
+class LoginForm(ABC):
+    def get_credentials(self) -> Tuple[str, str]:
+        ...
+
+
 @dataclass
 class DownloadArgs:
     cookie: Path = utils.default_cookie_path
@@ -55,6 +61,8 @@ class DownloadArgs:
     contest: Optional[str] = None
     no: Optional[str] = None
     problem: Problem = field(init=False, repr=True)
+    service: Service = field(init=False, repr=True)
+    login_form: Optional[LoginForm] = None
     token: Optional[str] = None
 
     def __post_init__(self) -> None:
@@ -68,6 +76,10 @@ class DownloadArgs:
         if not problem:
             raise InvalidURL('The URL "%s" is not supported' % url)
         self.problem = problem
+        service = dispatch.service_from_url(url)
+        if not service:
+            raise InvalidURL('The URL "%s" is not supported' % url)
+        self.service = service
 
         if not isinstance(self.problem, YukicoderProblem):
             self.token = None
@@ -110,6 +122,10 @@ def testcases_to_samples(
 def download(args: DownloadArgs) -> List[TestCase]:
     # download samples
     with create_UA_session(path=args.cookie, token=args.token) as sess:
+        if not args.service.is_logged_in(session=sess) and args.login_form:
+            args.service.login(
+                get_credentials=args.login_form.get_credentials, session=sess
+            )
         if args.system:
             testcases = args.problem.download_system_cases(session=sess)
         else:
